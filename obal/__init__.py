@@ -4,9 +4,9 @@
 from __future__ import print_function
 
 import argparse
-import glob
 import os
 import sys
+import json
 
 from pkg_resources import resource_filename
 
@@ -16,14 +16,20 @@ except ImportError:
     argcomplete = None
 
 
-def find_playbooks(playbooks_path):
-    playbooks = glob.glob(os.path.join(playbooks_path, '*.yml'))
-    playbooks_actions = {}
-    for playbook in playbooks:
-        filename = os.path.basename(playbook)
-        action = os.path.splitext(filename)[0]
-        playbooks_actions[action] = playbook
-    return playbooks_actions
+class VariableAction(argparse.Action):
+    """thanks ewoud! :)"""
+    def __call__(self, parser, namespace, values, option_string=None):
+        variables = getattr(namespace, self.dest)
+        if variables is None:
+            variables = {}
+            setattr(namespace, self.dest, variables)
+
+        if not option_string:
+            # TODO: Can we still know this?
+            raise ValueError('Unknown option')
+        if option_string.startswith('--'):
+            option_string = option_string[2:]
+        variables[option_string] = values
 
 
 def find_packages(inventory_path):
@@ -40,7 +46,7 @@ def find_packages(inventory_path):
     return package_choices
 
 
-def obal_argument_parser(actions, package_choices):
+def obal_argument_parser(package_choices):
     parser = argparse.ArgumentParser()
 
     parent_parser = argparse.ArgumentParser(add_help=False)
@@ -72,6 +78,13 @@ def obal_argument_parser(actions, package_choices):
                                help="""only run plays and tasks whose tags do not
                                match these values""")
 
+    package_parser = argparse.ArgumentParser(add_help=False)
+    package_parser.add_argument('package',
+                                metavar='package',
+                                choices=package_choices,
+                                nargs='+',
+                                help="the package to build")
+
     subparsers = parser.add_subparsers(dest='action',
                                        help="""which action to execute""")
     # Setting `required` outside of #add_subparser() is needed because
@@ -79,14 +92,27 @@ def obal_argument_parser(actions, package_choices):
     # though it's in the docs).
     subparsers.required = True
 
-    for action in actions:
-        action_subparser = subparsers.add_parser(action, parents=[parent_parser])
-        if action != 'setup':
-            action_subparser.add_argument('package',
-                                          metavar='package',
-                                          choices=package_choices,
-                                          nargs='+',
-                                          help="the package to build")
+    subparsers.add_parser('bump-release', help="", parents=[parent_parser, package_parser])
+
+    changelog_parser = subparsers.add_parser('changelog',
+                                             help="write an RPM changelog entry"
+                                             "for the current version and release",
+                                             parents=[parent_parser, package_parser])
+    changelog_parser.add_argument('--changelog', help="the changelog entry to add",
+                                  dest='variables', metavar="MESSAGE", action=VariableAction)
+
+    subparsers.add_parser('scratch', help="", parents=[parent_parser, package_parser])
+    subparsers.add_parser('setup', help="", parents=[parent_parser])
+    subparsers.add_parser('lint', help="", parents=[parent_parser, package_parser])
+    subparsers.add_parser('update', help="", parents=[parent_parser, package_parser])
+    subparsers.add_parser('nightly', help="", parents=[parent_parser, package_parser])
+    subparsers.add_parser('source', help="", parents=[parent_parser, package_parser])
+    subparsers.add_parser('add', help="", parents=[parent_parser, package_parser])
+    subparsers.add_parser('release', help="", parents=[parent_parser, package_parser])
+    subparsers.add_parser('cleanup-copr', help="", parents=[parent_parser, package_parser])
+    subparsers.add_parser('srpm', help="", parents=[parent_parser, package_parser])
+    subparsers.add_parser('repoclosure', help="", parents=[parent_parser, package_parser])
+    subparsers.add_parser('check', help="", parents=[parent_parser, package_parser])
 
     if argcomplete:
         argcomplete.autocomplete(parser)
@@ -103,6 +129,8 @@ def generate_ansible_args(inventory_path, playbook_path, args):
         ansible_args.append("-%s" % str("v" * args.verbose))
     for extra_var in args.extra_vars:
         ansible_args.extend(["-e", extra_var])
+    if 'variables' in args and args.variables:
+        ansible_args.extend(["-e", json.dumps(args.variables)])
     if args.tags:
         ansible_args.append("--tags")
         ansible_args.append(",".join(args.tags))
@@ -131,13 +159,12 @@ def main(cliargs=None):
     inventory_path = os.path.join(os.getcwd(), 'package_manifest.yaml')
 
     package_choices = find_packages(inventory_path)
-    playbooks = find_playbooks(packaging_playbooks_path)
 
-    parser = obal_argument_parser(playbooks.keys(), package_choices)
+    parser = obal_argument_parser(package_choices)
 
     args = parser.parse_args(cliargs)
 
-    playbook_path = playbooks[args.action]
+    playbook_path = os.path.join(packaging_playbooks_path, '{}.yml'.format(args.action))
 
     if not args.action == 'setup':
         if not os.path.exists(inventory_path):
