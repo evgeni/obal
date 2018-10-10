@@ -7,12 +7,29 @@ import subprocess
 import glob
 
 ANSIBLE_METADATA = {
-    'metadata_version': '1.1',
+    'metadata_version': '1.2',
     'status': ['preview'],
     'supported_by': 'community'
 }
 
 from ansible.module_utils.basic import AnsibleModule  # pylint: disable=C0413
+
+def get_changelog_epoch_version_release(specfile):
+    cmd = ['rpm', '--query', '--changelog', '--specfile', specfile]
+
+    return subprocess.check_output(cmd).split("\n")[0].split(" ")[-1]
+
+
+def format_evr(epoch, version, release):
+    epoch = epoch.strip().replace('"', '')
+    version = version.strip().replace('"', '')
+    release = release.strip().replace('"', '')
+    evr = ""
+
+    if not '(none)' in epoch:
+        evr += "{}:".format(epoch)
+    evr += "{}-{}".format(version, release)
+    return evr
 
 
 def run_module():
@@ -21,9 +38,15 @@ def run_module():
     )
 
     result = dict(
-        changed=False,
-        changelog_version_release='',
-        specfile_version_release=''
+        changed = False,
+        changelog = dict(
+            epoch_version_release = ''
+        ),
+        specfile = dict(
+            epoch = '',
+            version = '',
+            release = ''
+        )
     )
 
     module = AnsibleModule(
@@ -40,17 +63,41 @@ def run_module():
         module.fail_json(msg="Could not find specfile", **result)
 
     try:
-        cmd = ['rpm', '--query', '--changelog', '--specfile', specfile]
-        result['changelog_version_release'] = subprocess.check_output(cmd).split("\n")[0].split(" ")[-1]
+        result['changelog']['epoch_version_release'] = get_changelog_epoch_version_release(specfile)
 
-        cmd = ['rpmspec', '--query', '--queryformat', '%{version}-%{release}', '--undefine', 'dist', '--srpm', specfile]
-        result['specfile_version_release'] = subprocess.check_output(cmd)
+        result['specfile']['epoch'] = subprocess.check_output([
+            'rpmspec',
+            '--query',
+            '--queryformat="%{epoch}"',
+            '--srpm',
+            specfile
+        ])
+
+        result['specfile']['version'] = subprocess.check_output([
+            'rpmspec',
+            '--query',
+            '--queryformat="%{version}"',
+            '--srpm',
+            specfile
+        ])
+
+        result['specfile']['release'] = subprocess.check_output([
+            'rpmspec',
+            '--query',
+            '--queryformat="%{release}"',
+            '--srpm',
+            '--undefine',
+            'dist',
+            specfile
+        ])
     except subprocess.CalledProcessError as err:
         msg = "An error occured while running [ {} ]".format(err.cmd)
         module.fail_json(msg=msg, **result)
 
-    if result['changelog_version_release'] != result['specfile_version_release']:
-        msg = "changelog entry missing for {}".format(result['specfile_version_release'])
+    evr = format_evr(result['specfile']['epoch'], result['specfile']['version'], result['specfile']['release'])
+
+    if result['changelog']['epoch_version_release'] != evr:
+        msg = "changelog entry missing for {}".format(evr)
         module.fail_json(msg=msg, **result)
 
     module.exit_json(**result)

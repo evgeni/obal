@@ -24,6 +24,18 @@ def en_locale():
             locale.resetlocale(locale.LC_TIME)
 
 
+def format_evr(epoch, version, release):
+    epoch = epoch.strip().replace('"', '')
+    version = version.strip().replace('"', '')
+    release = release.strip().replace('"', '')
+    evr = ""
+
+    if not '(none)' in epoch:
+        evr += "{}:".format(epoch)
+    evr += "{}-{}".format(version, release)
+    return evr
+
+
 def main():
     module = AnsibleModule(
         argument_spec=dict(
@@ -36,6 +48,13 @@ def main():
     changelog = module.params['changelog']
 
     user = subprocess.check_output(['rpmdev-packager']).strip()
+    epoch = subprocess.check_output([
+        'rpmspec',
+        '--query',
+        '--queryformat="%{epoch}"',
+        '--srpm',
+        spec
+    ])
     version = subprocess.check_output([
         'rpmspec',
         '--query',
@@ -52,8 +71,7 @@ def main():
         spec
     ])
 
-    release = release.strip().replace('"', '')
-    version = version.strip().replace('"', '')
+    evr = format_evr(epoch, version, release)
 
     with open(spec) as spec_file:
         lines = spec_file.readlines()
@@ -64,7 +82,7 @@ def main():
         if line.startswith("%changelog"):
             with en_locale():
                 date = time.strftime("%a %b %d %Y", time.gmtime())
-            entry = "* %s %s - %s-%s\n%s\n\n" % (date, user, version, release, changelog)
+            entry = "* %s %s - %s\n%s\n\n" % (date, user, evr, changelog)
             lines[i] += entry
             changed = True
             break
