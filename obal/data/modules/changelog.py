@@ -24,18 +24,6 @@ def en_locale():
             locale.resetlocale(locale.LC_TIME)
 
 
-def format_evr(epoch, version, release):
-    epoch = epoch.strip().replace('"', '')
-    version = version.strip().replace('"', '')
-    release = release.strip().replace('"', '')
-    evr = ""
-
-    if '(none)' not in epoch:
-        evr += "{}:".format(epoch)
-    evr += "{}-{}".format(version, release)
-    return evr
-
-
 def main():
     module = AnsibleModule(
         argument_spec=dict(
@@ -48,30 +36,16 @@ def main():
     changelog = module.params['changelog']
 
     user = subprocess.check_output(['rpmdev-packager']).strip()
-    epoch = subprocess.check_output([
-        'rpmspec',
+    evr = subprocess.check_output([
+        'rpm',
         '--query',
-        '--queryformat="%{epoch}"',
-        '--srpm',
+        '--queryformat',
+        '%|epoch?{%{epoch}:}:{}|%{version}-%{release}',
+        '--undefine',
+        'dist',
+        '--specfile',
         spec
     ])
-    version = subprocess.check_output([
-        'rpmspec',
-        '--query',
-        '--queryformat="%{version}"',
-        '--srpm',
-        spec
-    ])
-    release = subprocess.check_output([
-        'rpmspec',
-        '--query',
-        '--queryformat="%{release}"',
-        '--srpm',
-        '--undefine=dist',
-        spec
-    ])
-
-    evr = format_evr(epoch, version, release)
 
     with open(spec) as spec_file:
         lines = spec_file.readlines()
