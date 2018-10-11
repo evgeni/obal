@@ -30,7 +30,7 @@ def format_evr(epoch, version, release):
     release = release.strip().replace('"', '')
     evr = ""
 
-    if not '(none)' in epoch:
+    if '(none)' not in epoch:
         evr += "{}:".format(epoch)
     evr += "{}-{}".format(version, release)
     return evr
