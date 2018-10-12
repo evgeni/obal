@@ -74,7 +74,7 @@ def run_module():
         module.fail_json(msg=msg, **result)
 
     if result['changelog']['epoch_version_release'] != result['specfile']['epoch_version_release']:
-        msg = "changelog entry missing for {}".format(evr)
+        msg = "changelog entry missing for {}".format(result['specfile']['epoch_version_release'])
         module.fail_json(msg=msg, **result)
 
     module.exit_json(**result)
