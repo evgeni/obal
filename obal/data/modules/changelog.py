@@ -2,7 +2,6 @@
 import locale
 import subprocess
 import time
-import rpm
 from contextlib import contextmanager
 
 from ansible.module_utils.basic import AnsibleModule
@@ -37,8 +36,16 @@ def main():
     changelog = module.params['changelog']
 
     user = subprocess.check_output(['rpmdev-packager']).strip()
-    rpm.delMacro('dist')
-    evr = rpm.spec(spec).sourceHeader['evr'].decode('ascii')
+    evr = subprocess.check_output([
+        'rpm',
+        '--query',
+        '--queryformat',
+        '%|epoch?{%{epoch}:}:{}|%{version}-%{release}',
+        '--undefine',
+        'dist',
+        '--specfile',
+        spec
+    ])
 
     with open(spec) as spec_file:
         lines = spec_file.readlines()
