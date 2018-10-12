@@ -3,8 +3,8 @@
 # pylint: disable=C0111,C0301,R1710
 
 import os
-import subprocess
 import glob
+import rpm
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.2',
@@ -13,29 +13,6 @@ ANSIBLE_METADATA = {
 }
 
 from ansible.module_utils.basic import AnsibleModule  # pylint: disable=C0413
-
-def get_changelog_evr(specfile):
-    evr = subprocess.check_output([
-        'rpm',
-        '--query',
-        '--changelog',
-        '--specfile',
-        specfile
-    ])
-    return evr.split("\n")[0].split(" ")[-1]
-
-def get_specfile_evr(specfile):
-    return subprocess.check_output([
-        'rpm',
-        '--query',
-        '--queryformat',
-        '%|epoch?{%{epoch}:}:{}|%{version}-%{release}',
-        '--undefine',
-        'dist',
-        '--specfile',
-        specfile
-    ])
-
 
 def run_module():
     module_args = dict(
@@ -65,16 +42,15 @@ def run_module():
     except IndexError:
         module.fail_json(msg="Could not find specfile", **result)
 
-    try:
-        result['changelog']['epoch_version_release'] = get_changelog_evr(specfile)
+    rpm.delMacro('dist')
+    spec = rpm.spec(specfile)
 
-        result['specfile']['epoch_version_release'] = get_specfile_evr(specfile)
-    except subprocess.CalledProcessError as err:
-        msg = "An error occured while running [ {} ]".format(err.cmd)
-        module.fail_json(msg=msg, **result)
+    result['changelog']['epoch_version_release'] = spec.sourceHeader[rpm.RPMTAG_CHANGELOGNAME][0].split(' ')[-1]
+
+    result['specfile']['epoch_version_release'] = spec.sourceHeader['evr'].decode('ascii')
 
     if result['changelog']['epoch_version_release'] != result['specfile']['epoch_version_release']:
-        msg = "changelog entry missing for {}".format(evr)
+        msg = "changelog entry missing for {}".format(result['specfile']['epoch_version_release'])
         module.fail_json(msg=msg, **result)
 
     module.exit_json(**result)
