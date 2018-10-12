@@ -20,12 +20,12 @@ def run_module():
     )
 
     result = dict(
-        changed = False,
-        changelog = dict(
-            epoch_version_release = ''
+        changed=False,
+        changelog=dict(
+            epoch_version_release=''
         ),
-        specfile = dict(
-            epoch_version_release = ''
+        specfile=dict(
+            epoch_version_release=''
         )
     )
 
