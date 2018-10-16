@@ -28,4 +28,3 @@ addons:
     packages:
     - git-annex
     - rpm
-    - python-rpm
