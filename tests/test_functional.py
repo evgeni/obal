@@ -406,6 +406,13 @@ def test_obal_lint_hello():
     assert_mockbin_log(["rpmlint {pwd}/packages/hello"])
 
 
+@obal_cli_test(repotype='upstream_with_epoch')
+def test_obal_lint_hello_with_epoch():
+    assert_obal_success(['lint', 'hello'])
+
+    assert_mockbin_log(["rpmlint {pwd}/packages/hello"])
+
+
 @obal_cli_test(repotype='upstream_bad_changelog')
 def test_obal_lint_bad_changelog():
     assert_obal_failure(['lint', 'hello'])

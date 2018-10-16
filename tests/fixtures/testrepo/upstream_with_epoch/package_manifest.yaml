@@ -1,0 +1,20 @@
+---
+packages:
+  vars:
+    releasers:
+      - dist-git
+    nightly_releaser: dist-git-jenkins
+    diff_package_skip: false
+    diff_package_type: 'koji'
+    diff_package_koji_command: 'koji'
+    scl: tfm
+    diff_package_tags:
+      - obaltest-nightly-rhel7
+  hosts:
+    hello:
+      nightly_package_tito_releaser_args:
+        - "--arg jenkins_job=hello-master-release"
+
+repoclosures:
+  hosts:
+    core-repoclosure: {}
