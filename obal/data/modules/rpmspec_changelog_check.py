@@ -26,13 +26,13 @@ def get_changelog_evr(specfile):
 
 def get_specfile_evr(specfile):
     return subprocess.check_output([
-        'rpm',
+        'rpmspec',
         '--query',
         '--queryformat',
-        '%|epoch?{%{epoch}:}:{}|%{version}-%{release}',
+        '%{evr}',
         '--undefine',
         'dist',
-        '--specfile',
+        '--srpm',
         specfile
     ])
 

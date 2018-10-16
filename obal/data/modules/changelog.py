@@ -37,13 +37,13 @@ def main():
 
     user = subprocess.check_output(['rpmdev-packager']).strip()
     evr = subprocess.check_output([
-        'rpm',
+        'rpmspec',
         '--query',
         '--queryformat',
-        '%|epoch?{%{epoch}:}:{}|%{version}-%{release}',
+        '%{evr}',
         '--undefine',
         'dist',
-        '--specfile',
+        '--srpm',
         spec
     ])
 
