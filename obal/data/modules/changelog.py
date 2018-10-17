@@ -5,6 +5,7 @@ import time
 from contextlib import contextmanager
 
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.obal import get_specfile_evr  # pylint:disable=import-error,no-name-in-module
 
 
 @contextmanager
@@ -36,16 +37,7 @@ def main():
     changelog = module.params['changelog']
 
     user = subprocess.check_output(['rpmdev-packager']).strip()
-    evr = subprocess.check_output([
-        'rpmspec',
-        '--query',
-        '--queryformat',
-        '%{evr}',
-        '--undefine',
-        'dist',
-        '--srpm',
-        spec
-    ])
+    evr = get_specfile_evr(spec)
 
     with open(spec) as spec_file:
         lines = spec_file.readlines()

@@ -6,35 +6,15 @@ import os
 import subprocess
 import glob
 
+from ansible.module_utils.basic import AnsibleModule  # pylint: disable=C0413
+from ansible.module_utils.obal import get_changelog_evr, get_specfile_evr  # pylint:disable=import-error,no-name-in-module
+
+
 ANSIBLE_METADATA = {
     'metadata_version': '1.2',
     'status': ['preview'],
     'supported_by': 'community'
 }
-
-from ansible.module_utils.basic import AnsibleModule  # pylint: disable=C0413
-
-def get_changelog_evr(specfile):
-    evr = subprocess.check_output([
-        'rpm',
-        '--query',
-        '--changelog',
-        '--specfile',
-        specfile
-    ])
-    return evr.split("\n")[0].split(" ")[-1]
-
-def get_specfile_evr(specfile):
-    return subprocess.check_output([
-        'rpmspec',
-        '--query',
-        '--queryformat',
-        '%{evr}',
-        '--undefine',
-        'dist',
-        '--srpm',
-        specfile
-    ])
 
 
 def run_module():
