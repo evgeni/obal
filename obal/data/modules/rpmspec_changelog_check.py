@@ -44,12 +44,8 @@ def run_module():
 
     result = dict(
         changed=False,
-        changelog=dict(
-            epoch_version_release=''
-        ),
-        specfile=dict(
-            epoch_version_release=''
-        )
+        changelog_epoch_version_release='',
+        specfile_epoch_version_release=''
     )
 
     module = AnsibleModule(
@@ -66,15 +62,15 @@ def run_module():
         module.fail_json(msg="Could not find specfile", **result)
 
     try:
-        result['changelog']['epoch_version_release'] = get_changelog_evr(specfile)
+        result['changelog_epoch_version_release'] = get_changelog_evr(specfile)
 
-        result['specfile']['epoch_version_release'] = get_specfile_evr(specfile)
+        result['specfile_epoch_version_release'] = get_specfile_evr(specfile)
     except subprocess.CalledProcessError as err:
         msg = "An error occured while running [ {} ]".format(err.cmd)
         module.fail_json(msg=msg, **result)
 
-    if result['changelog']['epoch_version_release'] != result['specfile']['epoch_version_release']:
-        msg = "changelog entry missing for {}".format(result['specfile']['epoch_version_release'])
+    if result['changelog_epoch_version_release'] != result['specfile_epoch_version_release']:
+        msg = "changelog entry missing for {}".format(result['specfile_epoch_version_release'])
         module.fail_json(msg=msg, **result)
 
     module.exit_json(**result)
